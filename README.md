@@ -1,86 +1,98 @@
-# demo-spring-vite-vue3
+# demo-vue-cli-vs-vite
 
-This is a **very** small [Spring Boot](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/) project
-which uses **two** simplified [Vue.js](https://vuejs.org/) demo projects as (part of) its frontend.
+This is a **very** simple Javascript-Project which utilizes
 
-There are several strategies to integrate these technologies.
+- [Express.js](https://expressjs.com/) to serve **two** simplified [Vue.js](https://vuejs.org/) demo projects build with
+- [Vue CLI](https://cli.vuejs.org/) (which is backed by [Webpack](https://webpack.js.org/)) and
+- [Vite](https://vitejs.dev/).
 
-Up to now I've successfully used
+I've setup this project in a way such that it mimics the way I usually setup [Spring Boot](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/) with [Vue.js](https://vuejs.org/) as frontend, see [demo-spring-vite-vue3](https://github.com/drahkrub/demo-spring-vite-vue3).
 
-- [Vue CLI](https://cli.vuejs.org/) (which is backed by [Webpack](https://webpack.js.org/))
-- and [Quasar CLI with Webpack](https://quasar.dev/quasar-cli-webpack/quasar-config-js)
+Everything works fine
 
-as development and build tools for Vue.js frontends.
+- in production mode with vue-cli and vite
+- in development mode with vue-cli
 
-I would like to switch to
+Only the **development mode with vite reveals problems** I failed to solve - that's why I set up this demo project. ;-)
 
-- [Vite](https://vitejs.dev/)
-- and [Quasar CLI with Vite](https://quasar.dev/quasar-cli-vite/quasar-config-js)
+## Run everything in "production mode"
 
-but I have a problem with the development setup if I use "my kind of strategy" to integrate these technologies.
+See `package.json`, all three sub projects are handled at once, global installation of `yarn` is assumed.
 
-That's why I set up this demo project. ;-)
-
-## Run everything in production mode
-
-Build and start the demo with: `mvn clean spring-boot:run`
-
-### Steps during the build:
-
-1. The [Frontend Maven Plugin](https://github.com/eirslett/frontend-maven-plugin)
-
-   - installs node and yarn locally
-   - builds the [Vue CLI](https://cli.vuejs.org/) project in `src/main/frontend/vue-cli-project/`
-   - builds the [Vite](https://vitejs.dev/) project in `src/main/frontend/vite-project/`
-
-2. The [Spring Boot Maven Plugin](https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/htmlsingle)
-
-   - triggers the compiler to compile the backend java code
-   - starts the integrated tomcat server
+1. Install all dependencies: `yarn install_dependencies`
+2. Build all with: `yarn build`
+3. Start express backend with: `yarn serve`
 
 ### Browse the demo
 
 Open http://localhost:8080/ in your preferred browser.
 
-You will see a static HTML-Page (located in `src/main/resources/static/index.html`) providing two links to jump into the demo frontends build with vue-cli and vite respectively. Everything works as expected, both [Vue Routers](https://router.vuejs.org) use the [recommended HTML5 Mode (history mode)](https://router.vuejs.org/guide/essentials/history-mode.html#html5-mode), you can switch between `/v/` and `/v/about/` (resp. `/w/` and `/w/about/`) whereby the about page loads and displays some JSON fetched from the Spring-Boot backend.
+You will see a static HTML-Page (located in `dist/index.html`, copied from `src/index.html`) providing two links to jump into the demo frontends build with vite and vue-cli respectively. Everything works as expected, both [Vue Routers](https://router.vuejs.org) use the [recommended HTML5 Mode (history mode)](https://router.vuejs.org/guide/essentials/history-mode.html#html5-mode), you can switch between `/v/` and `/v/about/` (resp. `/w/` and `/w/about/`) whereby the about page loads and displays some JSON fetched from the express backend.
 
 ### How does it work?
 
-The Integration is based on different base URLs for the Vue Router and for the build processes:
+The build processes of vite and vue-cli place their generated assets in `dist/vite-project` and `dist/vue-cli-project` respectively.
 
-| Option                 | `vite.config.js`                     | `vue.config.js`                         |
-| ---------------------- | ------------------------------------ | --------------------------------------- |
-| `outDir` / `outputDir` | `target/classes/static/vite-project` | `target/classes/static/vue-cli-project` |
-| `base`/ `publicPath`   | `/vite-project/`                     | `/vue-cli-project/`                     |
-| `VUE_ROUTER_BASE`      | `/v/`                                | `/w/`                                   |
+Express is configured (see `src/index.js`, copied to `dist/index.js` by the build process) as follows:
 
-The build processes of both javascript projects place their generated assets in `target/classes/static/vite-project` and `target/classes/static/vue-cli-project` respectively (`src/main/resources/static/vite-project` and `src/main/resources/static/vue-cli-project` would be virtually the same).
+```javascript
+const express = require("express");
+const path = require("path");
+
+const app = express();
+
+// Serve static files (in dist/)
+app.use("/", express.static(__dirname));
+
+// Redirect /v/anything and /w/anything to ...
+app.get("/v/*", (req, res) => {
+  res.sendFile(path.join(__dirname, "vite-project/index.html"));
+});
+app.get("/w/*", (req, res) => {
+  res.sendFile(path.join(__dirname, "vue-cli-project/index.html"));
+});
+
+// faking some REST-API
+app.get("/api", (req, res) => {
+  res.json({ message: "some JSON" });
+});
+
+const port = 8080;
+
+app.listen(port, () => {
+  console.log(`Server is running at http://localhost:${port}`);
+});
+```
 
 This way each static asset is reachable under `http://localhost:8080/vite-project/[...]` and `http://localhost:8080/vue-cli-project/[...]`.
 
-And by forwarding each URL matching `/v/**` and `/w/**` to `/vite-project/index.html` and `/vue-cli-project/index.html` respectively, the vue router in question can take over the handling of the given URL, see `MyController.java`:
+And by forwarding each URL matching `/v/*` and `/w/*` to `/vite-project/index.html` and `/vue-cli-project/index.html` respectively, the vue router in question can take over the handling of the given URL.
 
-```
-    @GetMapping("/v/**")
-    public String viteProject() {
-        return "forward:/vite-project/index.html";
-    }
+So the integration is based on different base URLs for the Vue Router and for the build processes:
 
-    @GetMapping("/w/**")
-    public String vueCliProject() {
-        return "forward:/vue-cli-project/index.html";
-    }
-```
+| Option                 | `vite.config.js`    | `vue.config.js`        |
+| ---------------------- | ------------------- | ---------------------- |
+| `outDir` / `outputDir` | `dist/vite-project` | `dist/vue-cli-project` |
+| `base`/ `publicPath`   | `/vite-project/`    | `/vue-cli-project/`    |
+| `VUE_ROUTER_BASE`      | `/v/`               | `/w/`                  |
 
 ## Running in development mode
 
+While the express server is running (started with `yarn serve`) open another shell and
+
 ### vue-cli (no problems at all)
 
-In `src/main/frontend/vue-cli-project` start a dev server (based on [webpack-dev-server](https://github.com/webpack/webpack-dev-server)) via the command `yarn serve` or `npm run serve`. Your default browser should open as soon as the dev server has been started. Everything works like in production mode including [live reload (HMR)](https://webpack.js.org/configuration/dev-server/#devserverhot).
+- change directory with: `cd src/vue-cli-project`
+- start a dev server (based on [webpack-dev-server](https://github.com/webpack/webpack-dev-server)) with: `yarn serve`
+
+Your default browser should open as soon as the dev server has been started. Everything works like in production mode including [live reload (HMR)](https://webpack.js.org/configuration/dev-server/#devserverhot).
 
 ### vite (finally the problematic part)
 
-In `src/main/frontend/vite-project` start a dev server via the command `yarn dev` or `npm run dev`. Your default browser should open as soon as the dev server has been started - and here the problems arise:
+- change directory with: `cd src/vite-project`
+- start a dev server with: `yarn dev`
+
+Your default browser should open as soon as the dev server has been started - and here the problems arise:
 
 1. The URL opened is `.../v/ite-project/`?! Strange, but one can get over it. Just click on the home link to go to `/v/`...
 2. If you are on `/v/` (or somewhere else) and do a **browser reload** the following message appears:
@@ -100,6 +112,6 @@ In `src/main/frontend/vite-project` start a dev server via the command `yarn dev
 
 Some links:
 
-* https://github.com/vitejs/vite/discussions/13299
-* https://stackoverflow.com/questions/76309242/switching-from-vue-cli-to-vite-with-spring-boot-as-backend-dev-server-not-worki
-* https://stackoverflow.com/questions/75753422/vite-dev-servers-hmr-not-working-with-spring-boot
+- https://github.com/vitejs/vite/discussions/13299
+- https://stackoverflow.com/questions/76309242/switching-from-vue-cli-to-vite-with-spring-boot-as-backend-dev-server-not-worki
+- https://stackoverflow.com/questions/75753422/vite-dev-servers-hmr-not-working-with-spring-boot

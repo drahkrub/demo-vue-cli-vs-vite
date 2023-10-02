@@ -6,6 +6,7 @@
   "author": "Burkhard Graves <graves@id-on.de>",
   "license": "MIT",
   "scripts": {
+    "install_dependencies": "yarn ; yarn --cwd src/vite-project/ ; yarn --cwd src/vue-cli-project/ ",
     "build_vite": "yarn --cwd src/vite-project/ build",
     "build_vue_cli": "yarn --cwd src/vue-cli-project/ build",
     "build": "yarn build_vite ; yarn build_vue_cli ; copyfiles -u 1 \"src/index.*\" dist/",
