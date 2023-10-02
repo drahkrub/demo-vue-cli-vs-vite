@@ -4,7 +4,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+//export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   resolve: {
     alias: {
@@ -16,6 +17,9 @@ export default defineConfig({
     outDir: '../../dist/vite-project',
     emptyOutDir: true
   },
+  // the following seems to fix the reload problem in development mode,
+  // but why is this needed? And proxying is still not working...
+  //base: mode === 'production' ? '/vite-project/' : '/',
   base: '/vite-project/',
   define: {
     'process.env.VUE_ROUTER_BASE': '"/v/"'
@@ -49,4 +53,5 @@ export default defineConfig({
     }
   }
   // CHANGED/ADDED - END
-})
+  //}) // closing export default defineConfig({
+})) // closing export default defineConfig(({ mode }) => ({
