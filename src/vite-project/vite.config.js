@@ -19,8 +19,8 @@ export default defineConfig(({ mode }) => ({
   },
   // the following seems to fix the reload problem in development mode,
   // but why is this needed? And proxying is still not working...
-  //base: mode === 'production' ? '/vite-project/' : '/',
-  base: '/vite-project/',
+  base: mode === 'production' ? '/vite-project/' : '/v/',
+  //base: '/vite-project/',
   define: {
     'process.env.VUE_ROUTER_BASE': '"/v/"'
   },
@@ -34,16 +34,16 @@ export default defineConfig(({ mode }) => ({
       //   changeOrigin: true
       // }
       // first try like in vue.config.js - destroys live reload!
-      // '^.*': {
-      //   target: 'http://localhost:8080',
-      //   changeOrigin: true,
-      //   ws: false,
-      //   bypass: function (req, res, options) {
-      //     if (req.url.startsWith('/v/')) {
-      //       return req.url
-      //     }
-      //   }
-      // }
+      '/': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        ws: false,
+        bypass: function (req /*, res, options */) {
+          if (req.url.startsWith('/v/')) {
+            return req.url
+          }
+        }
+      }
       // second try - does also not work:
       // '^^(?!/v/).*$': {
       //   target: 'http://localhost:8080',
